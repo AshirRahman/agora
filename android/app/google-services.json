@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "540606693808",
+    "project_id": "agora-8bc24",
+    "storage_bucket": "agora-8bc24.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:540606693808:android:70791cf3c36f3a9113d675",
+        "android_client_info": {
+          "package_name": "com.example.course_online"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaOHEXWl5Y1anJzhkW_NE54EO1kymkn1g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
