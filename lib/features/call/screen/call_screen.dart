@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+
 import '../controller/call_controller.dart';
 
 class CallScreen extends StatelessWidget {
@@ -13,32 +15,55 @@ class CallScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: Obx(() {
+        return Stack(
           children: [
-            const Icon(Icons.call, color: Colors.green, size: 80),
-            const SizedBox(height: 20),
-            Text(
-              'Voice Call\n$channelId',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 16,
+            // Remote video view
+            controller.remoteUid.value != 0
+                ? AgoraVideoView(
+                    controller: VideoViewController.remote(
+                      rtcEngine: controller.engine,
+                      canvas: VideoCanvas(uid: controller.remoteUid.value),
+                      connection: RtcConnection(channelId: channelId),
+                    ),
+                  )
+                : const Center(
+                    child: Text(
+                      'Waiting for user...',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+
+            // Local video view
+            Positioned(
+              top: 40,
+              right: 20,
+              width: 120,
+              height: 160,
+              child: AgoraVideoView(
+                controller: VideoViewController(
+                  rtcEngine: controller.engine,
+                  canvas: const VideoCanvas(uid: 0),
                 ),
               ),
-              onPressed: controller.endCall,
-              child: const Text('End Call'),
+            ),
+
+            // End call button
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: FloatingActionButton(
+                  backgroundColor: Colors.red,
+                  onPressed: controller.endCall,
+                  child: const Icon(Icons.call_end),
+                ),
+              ),
             ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 }
