@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -12,7 +11,7 @@ class CallController extends GetxController {
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Current user info
+  // Logged in user info
   final String myUid;
   final String myName;
 
@@ -24,39 +23,35 @@ class CallController extends GetxController {
   // Agora App ID
   static const String agoraAppId = "dbd7049202af4cb1a4c8b4b614162763";
 
+  // Temporary Agora token (24h valid)
+  static const String tempAgoraToken =
+      "007eJxTYNB12160Ps6k4/HGa8wnZOK2vnUVc512MP78zV1sS+UEP3AoMKQkpZgbmFgaGRglppkkJxkmmiRbJJkkmRmaGJoZmZsZq/PGZjYEMjLw27xmZWSAQBCflSExPb8okYEBACczHew=";
+
   // Agora engine
   late RtcEngine engine;
 
   // Incoming call data
   Rx<CallModel?> incomingCall = Rx<CallModel?>(null);
 
+  // Remote user uid for video
+  RxInt remoteUid = 0.obs;
+
   // Call state
   RxBool isInCall = false.obs;
 
-  // Prevent multiple incoming screens
+  // Prevent multiple incoming call screens
   bool _incomingScreenOpen = false;
 
   @override
   void onInit() {
     super.onInit();
-    listenIncomingCalls(); // Start listening for calls
+    listenIncomingCalls();
   }
 
-  // Get Agora token from Firebase Function
-  Future<String> fetchAgoraToken(String channelId) async {
-    final result = await FirebaseFunctions.instance
-        .httpsCallable('generateAgoraToken')
-        .call({
-      'channelName': channelId,
-      'uid': myUid.hashCode,
-    });
-
-    return result.data['token'];
-  }
-
-  // Initialize Agora voice call
+  // Initialize Agora video call
   Future<void> initAgora(String channelId) async {
     await [
+      Permission.camera,
       Permission.microphone,
       Permission.bluetoothConnect,
     ].request();
@@ -70,24 +65,36 @@ class CallController extends GetxController {
       ),
     );
 
-    await engine.enableAudio();
+    await engine.enableVideo();
+    await engine.startPreview();
+
+    engine.registerEventHandler(
+      RtcEngineEventHandler(
+        onUserJoined: (RtcConnection connection, int uid, int elapsed) {
+          remoteUid.value = uid;
+        },
+        onUserOffline:
+            (RtcConnection connection, int uid, UserOfflineReasonType reason) {
+          remoteUid.value = 0;
+        },
+      ),
+    );
+
     await engine.setClientRole(
       role: ClientRoleType.clientRoleBroadcaster,
     );
 
-    final token = await fetchAgoraToken(channelId);
-
     await engine.joinChannel(
-      token: token,
+      token: tempAgoraToken,
       channelId: channelId,
-      uid: myUid.hashCode,
+      uid: 0,
       options: const ChannelMediaOptions(),
     );
 
     isInCall.value = true;
   }
 
-  // Start a call as caller
+  // Start call as caller
   Future<void> startCall({
     required String receiverId,
     required String receiverName,
@@ -142,7 +149,7 @@ class CallController extends GetxController {
     await initAgora(call.channelId);
   }
 
-  // End or reject call
+  // End call
   Future<void> endCall() async {
     if (isInCall.value) {
       await engine.leaveChannel();
@@ -161,6 +168,7 @@ class CallController extends GetxController {
 
     isInCall.value = false;
     incomingCall.value = null;
+    remoteUid.value = 0;
 
     Get.back();
   }
